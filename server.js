@@ -6,6 +6,11 @@ dotenv.config()
 const app = express()
 const port = process.env.PORT || 3000
 
+// CORS erlauben
+app.use(cors({
+    origin: 'https://hello-world-extension.onrender.com', // deine Emporix Extension-URL
+}))
+
 app.use(express.json())
 
 app.post('/api/token', async (req, res) => {
