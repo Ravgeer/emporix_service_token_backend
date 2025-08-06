@@ -1,6 +1,5 @@
-import express from 'express'
-import dotenv from 'dotenv'
-import fetch from 'node-fetch'
+const express = require('express')
+const dotenv = require('dotenv')
 
 dotenv.config()
 
@@ -11,31 +10,37 @@ app.use(express.json())
 
 app.post('/api/token', async (req, res) => {
     try {
-        const body = new URLSearchParams()
-        body.append('client_id', process.env.EMPORIX_CLIENT_ID)
-        body.append('client_secret', process.env.EMPORIX_CLIENT_SECRET)
-        body.append('grant_type', 'client_credentials')
-
-        const tokenRes = await fetch(process.env.EMPORIX_TOKEN_URL, {
+        const response = await fetch('https://api.emporix.io/oauth/token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body,
+            body: new URLSearchParams({
+                grant_type: 'client_credentials',
+                client_id: process.env.EMPORIX_CLIENT_ID,
+                client_secret: process.env.EMPORIX_CLIENT_SECRET,
+            }),
         })
 
-        if (!tokenRes.ok) {
-            const text = await tokenRes.text()
-            return res.status(tokenRes.status).send(`Token error: ${text}`)
+        console.log('🔁 Emporix response status:', response.status)
+
+        const text = await response.text()
+        console.log('📦 Raw response body:', text)
+
+        const data = text ? JSON.parse(text) : {}
+
+        if (!response.ok) {
+            console.error('❌ Fehler vom Token-Endpunkt:', data)
+            return res.status(response.status).json({ error: data })
         }
 
-        const data = await tokenRes.json()
-        res.json({ access_token: data.access_token })
-    } catch (err) {
-        console.error('❌ Fehler beim Token-Request:', err)
-        res.status(500).json({ error: 'Interner Fehler beim Tokenabruf' })
+        res.json(data)
+    } catch (error) {
+        console.error('❌ Token error:', error)
+        res.status(500).json({ error: 'Token error: ' + error.message })
     }
 })
+
 
 app.listen(port, () => {
     console.log(`🚀 Server läuft auf http://localhost:${port}`)
