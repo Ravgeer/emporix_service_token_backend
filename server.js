@@ -41,6 +41,29 @@ async function getServiceToken() {
     return data.access_token;
 }
 
+async function getCustomEntityToken() {
+    const tokenUrl = process.env.CUSTOM_TOKEN_URL || 'https://api.emporix.io/oauth/token'
+    const params = new URLSearchParams()
+    params.append('grant_type', 'client_credentials')
+    params.append('client_id', process.env.CUSTOM_CLIENT_ID)
+    params.append('client_secret', process.env.CUSTOM_CLIENT_SECRET)
+
+    const res = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params,
+    })
+
+    if (!res.ok) {
+        const errorText = await res.text()
+        throw new Error(`Token error: ${errorText}`)
+    }
+
+    const data = await res.json()
+    return data.access_token
+}
+
+
 // Vendor-User-Zuordnung
 async function findVendorIdForUser(userId, accessToken) {
     const vendorsUrl = `https://api.emporix.io/vendor/${TENANT}/vendors`;
@@ -115,6 +138,21 @@ app.post('/api/vendor-id', async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 });
+
+app.post('/api/token', async (req, res) => {
+    const apiKey = req.headers['x-api-key']
+    if (!apiKey || apiKey !== API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized – invalid API key' })
+    }
+
+    try {
+        const token = await getCustomEntityToken() // ruft den Token vom "harmlosen" Emporix-Key ab
+        return res.json({ accessToken: token })
+    } catch (err) {
+        console.error('❌ Fehler beim Token holen:', err)
+        return res.status(500).json({ error: 'Token fetch failed' })
+    }
+})
 
 app.listen(PORT, () => {
     console.log(`🚀 Emporix Vendor Gateway läuft auf Port ${PORT}`);
