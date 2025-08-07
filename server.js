@@ -59,6 +59,7 @@ async function findVendorIdForUser(userId, accessToken) {
 
     for (const vendor of vendors) {
         const vendorId = vendor.id;
+        const vendorName = vendor.name;
         const usersUrl = `https://api.emporix.io/iam/${TENANT}/users/vendors/${vendorId}`;
 
         const usersRes = await fetch(usersUrl, {
@@ -75,7 +76,10 @@ async function findVendorIdForUser(userId, accessToken) {
         const match = users.find((u) => u.id === userId);
 
         if (match) {
-            return vendorId;
+            return {
+                vendorId: vendorId,
+                vendorName: vendorName
+            };
         }
     }
 
@@ -97,11 +101,13 @@ app.post('/api/vendor-id', async (req, res) => {
 
     try {
         const token = await getServiceToken();
-        const vendorId = await findVendorIdForUser(userId, token);
-
-        if (!vendorId) {
+        const vendor = await findVendorIdForUser(userId, token);
+        if (!vendor) {
             return res.status(404).json({ error: 'Vendor not found for user' });
         }
+        return res.json(vendor); // enthält vendorId UND vendorName
+
+
 
         return res.json({ vendorId });
     } catch (error) {
